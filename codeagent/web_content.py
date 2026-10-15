@@ -1011,3 +1011,326 @@ inputEl.focus();
 </script>
 </body>
 </html>"""
+
+
+# ─────────────────────────────────────────────────────────────
+# 架构/流程展示页（/arch 路由）：用于演示与简历展示
+# ─────────────────────────────────────────────────────────────
+
+ARCH_HTML = r"""<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CodeAgent · 系统架构</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #0f1115; --bg-surface: #15181e; --bg-card: #1a1e26; --bg-hover: #21262f;
+  --text: #dfe3ea; --text-dim: #7d8590; --text-bright: #f2f4f8;
+  --accent: #8b7cf6; --accent-soft: rgba(139,124,246,0.12);
+  --green: #4ade80; --yellow: #fbbf24; --blue: #6ea8fe; --red: #f87171;
+  --border: #262c36; --mono: "SF Mono", "Fira Code", Consolas, monospace;
+}
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg); color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Hiragino Sans GB", sans-serif;
+  line-height: 1.7; -webkit-font-smoothing: antialiased;
+}
+
+/* 顶部导航 */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 40px; height: 60px;
+  background: rgba(15,17,21,0.82); backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+nav .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 16px; color: var(--text-bright); text-decoration: none; }
+nav .brand .logo {
+  width: 30px; height: 30px; border-radius: 8px; font-size: 15px;
+  background: linear-gradient(135deg, #8b7cf6, #6ea8fe);
+  display: flex; align-items: center; justify-content: center;
+}
+nav .links { display: flex; gap: 28px; align-items: center; }
+nav .links a { color: var(--text-dim); text-decoration: none; font-size: 13.5px; transition: color 0.15s; }
+nav .links a:hover { color: var(--text-bright); }
+nav .links .cta {
+  background: var(--accent); color: #fff !important; padding: 7px 16px;
+  border-radius: 8px; font-weight: 600;
+}
+nav .links .cta:hover { background: #9d90f8; }
+
+section { max-width: 1080px; margin: 0 auto; padding: 90px 40px 30px; }
+.section-tag {
+  display: inline-block; font-size: 11.5px; font-weight: 700; letter-spacing: 1.5px;
+  color: var(--accent); background: var(--accent-soft);
+  padding: 4px 12px; border-radius: 20px; margin-bottom: 14px; text-transform: uppercase;
+}
+h2 { font-size: 26px; color: var(--text-bright); margin-bottom: 12px; }
+.section-desc { color: var(--text-dim); font-size: 14.5px; max-width: 720px; margin-bottom: 28px; }
+
+/* Hero */
+#hero { text-align: center; padding-top: 150px; padding-bottom: 60px; }
+#hero .hero-logo {
+  width: 72px; height: 72px; border-radius: 18px; margin: 0 auto 22px;
+  background: linear-gradient(135deg, #8b7cf6, #6ea8fe); font-size: 34px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 8px 32px rgba(139,124,246,0.4);
+}
+#hero h1 { font-size: 40px; color: var(--text-bright); letter-spacing: -0.5px; }
+#hero .slogan { color: var(--text-dim); font-size: 16px; margin: 14px auto 26px; max-width: 560px; }
+#hero .badges { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+#hero .badge {
+  font-size: 12.5px; color: var(--text-dim); border: 1px solid var(--border);
+  background: var(--bg-surface); padding: 5px 14px; border-radius: 20px; font-family: var(--mono);
+}
+
+/* 架构分层图 */
+.layers { display: flex; flex-direction: column; gap: 10px; }
+.layer {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px;
+  padding: 16px 22px; display: flex; align-items: center; gap: 18px;
+  transition: border-color 0.2s, transform 0.2s;
+}
+.layer:hover { border-color: var(--accent); transform: translateX(4px); }
+.layer .layer-name {
+  flex-shrink: 0; width: 130px; font-weight: 700; color: var(--text-bright); font-size: 14.5px;
+}
+.layer .layer-name .en { display: block; font-size: 11px; color: var(--text-dim); font-weight: 400; font-family: var(--mono); }
+.layer .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip {
+  font-size: 12.5px; padding: 4px 12px; border-radius: 8px;
+  background: var(--bg-hover); color: var(--text); border: 1px solid var(--border);
+  font-family: var(--mono);
+}
+.layer-arrow { text-align: center; color: var(--text-dim); font-size: 14px; line-height: 1; }
+
+/* 卡片网格 */
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.card {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px;
+  padding: 22px; transition: border-color 0.2s, transform 0.2s;
+}
+.card:hover { border-color: var(--accent); transform: translateY(-3px); }
+.card .card-icon {
+  width: 40px; height: 40px; border-radius: 10px; font-size: 19px; margin-bottom: 14px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent-soft);
+}
+.card h3 { font-size: 15.5px; color: var(--text-bright); margin-bottom: 8px; }
+.card p { font-size: 13.5px; color: var(--text-dim); }
+.card code {
+  font-family: var(--mono); font-size: 12px; color: #e6b673;
+  background: #12151b; padding: 1px 6px; border-radius: 4px; border: 1px solid var(--border);
+}
+.card ul { padding-left: 18px; margin-top: 8px; }
+.card li { font-size: 13px; color: var(--text-dim); margin: 5px 0; }
+.card li b { color: var(--text); font-weight: 600; }
+
+/* 流程步骤（Agent Loop） */
+.flow { display: flex; flex-direction: column; gap: 0; }
+.step { display: flex; gap: 18px; }
+.step .rail { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; width: 36px; }
+.step .num {
+  width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+  background: var(--accent-soft); border: 1.5px solid var(--accent);
+  color: var(--accent); font-weight: 700; font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+}
+.step .line { flex: 1; width: 1.5px; background: var(--border); margin: 4px 0; }
+.step:last-child .line { display: none; }
+.step .step-body { padding-bottom: 26px; flex: 1; }
+.step .step-body h3 { font-size: 15.5px; color: var(--text-bright); margin-bottom: 4px; }
+.step .step-body h3 .hl { color: var(--accent); }
+.step .step-body p { font-size: 13.5px; color: var(--text-dim); }
+.step code {
+  font-family: var(--mono); font-size: 12px; color: #e6b673;
+  background: #12151b; padding: 1px 6px; border-radius: 4px; border: 1px solid var(--border);
+}
+.loop-hint {
+  margin: 0 0 26px 54px; padding: 10px 16px; border: 1px dashed var(--accent);
+  border-radius: 10px; color: var(--accent); font-size: 13px; background: var(--accent-soft);
+}
+
+/* 权限模式表格 */
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; background: var(--bg-card); border-radius: 14px; overflow: hidden; border: 1px solid var(--border); }
+th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border); }
+th { background: var(--bg-hover); color: var(--text-bright); font-size: 12.5px; letter-spacing: 0.5px; }
+tr:last-child td { border-bottom: none; }
+td.mode { font-family: var(--mono); color: var(--accent); font-weight: 600; }
+td .ok { color: var(--green); } td .ask { color: var(--yellow); } td .no { color: var(--red); }
+
+footer {
+  text-align: center; color: var(--text-dim); font-size: 12.5px;
+  padding: 40px; border-top: 1px solid var(--border); margin-top: 60px;
+}
+footer a { color: var(--accent); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="brand" href="#hero"><span class="logo">⚡</span>CodeAgent</a>
+  <div class="links">
+    <a href="#arch">系统架构</a>
+    <a href="#loop">核心流程</a>
+    <a href="#memory">记忆机制</a>
+    <a href="#security">权限沙箱</a>
+    <a class="cta" href="/">▸ 在线演示</a>
+  </div>
+</nav>
+
+<section id="hero">
+  <div class="hero-logo">⚡</div>
+  <h1>CodeAgent</h1>
+  <p class="slogan">运行在终端里的 AI 编程助手 —— Agent 主循环 · 工具调用 · 记忆系统 · 权限沙箱 · MCP 生态</p>
+  <div class="badges">
+    <span class="badge">Python 3.11+</span>
+    <span class="badge">Anthropic / OpenAI 兼容协议</span>
+    <span class="badge">WebSocket Remote</span>
+    <span class="badge">Textual TUI</span>
+    <span class="badge">MCP</span>
+  </div>
+</section>
+
+<section id="arch">
+  <div class="section-tag">Architecture</div>
+  <h2>系统架构 · 六层设计</h2>
+  <p class="section-desc">从接入层到模型层的完整分层：Web / TUI / 管道三种接入方式共享同一个 Agent 内核，能力层与安全层正交解耦。</p>
+  <div class="layers">
+    <div class="layer">
+      <div class="layer-name">接入层<span class="en">Interface</span></div>
+      <div class="chips"><span class="chip">Terminal TUI (Textual)</span><span class="chip">Web Remote (WebSocket)</span><span class="chip">Pipeline (-p / NDJSON)</span></div>
+    </div>
+    <div class="layer-arrow">↓</div>
+    <div class="layer">
+      <div class="layer-name">Agent 核心<span class="en">Core Loop</span></div>
+      <div class="chips"><span class="chip">主循环 + 事件流</span><span class="chip">上下文管理</span><span class="chip">自动压缩 Compact</span><span class="chip">重试与恢复</span></div>
+    </div>
+    <div class="layer-arrow">↓</div>
+    <div class="layer">
+      <div class="layer-name">能力层<span class="en">Capabilities</span></div>
+      <div class="chips"><span class="chip">工具注册表 (文件/Bash/搜索/子Agent)</span><span class="chip">斜杠命令</span><span class="chip">Skills 技能包</span><span class="chip">Hooks</span><span class="chip">Worktree 隔离</span></div>
+    </div>
+    <div class="layer-arrow">↓</div>
+    <div class="layer">
+      <div class="layer-name">安全层<span class="en">Security</span></div>
+      <div class="chips"><span class="chip">四级权限模式</span><span class="chip">路径沙箱</span><span class="chip">危险命令检测</span><span class="chip">seatbelt / bwrap</span></div>
+    </div>
+    <div class="layer-arrow">↓</div>
+    <div class="layer">
+      <div class="layer-name">持久层<span class="en">Persistence</span></div>
+      <div class="chips"><span class="chip">会话存储</span><span class="chip">记忆系统 (MEMORY.md)</span><span class="chip">指令加载</span><span class="chip">文件历史</span></div>
+    </div>
+    <div class="layer-arrow">↓</div>
+    <div class="layer">
+      <div class="layer-name">模型层<span class="en">LLM</span></div>
+      <div class="chips"><span class="chip">Anthropic</span><span class="chip">OpenAI 兼容 (DeepSeek 等)</span><span class="chip">MCP 服务器</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="loop">
+  <div class="section-tag">Core Loop</div>
+  <h2>Agent 主循环 · 一次提问的完整旅程</h2>
+  <p class="section-desc">ReAct 式循环：推理 → 工具调用 → 观察 → 再推理，直到任务完成。每一步都带权限校验与流式反馈。</p>
+  <div class="flow">
+    <div class="step">
+      <div class="rail"><div class="num">1</div><div class="line"></div></div>
+      <div class="step-body">
+        <h3><span class="hl">用户输入</span></h3>
+        <p>来自 Web 界面 / 终端 TUI / 管道模式，经 WebSocket 或标准输入进入 Agent。</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="rail"><div class="num">2</div><div class="line"></div></div>
+      <div class="step-body">
+        <h3><span class="hl">上下文组装</span></h3>
+        <p>系统提示词 + 指令文件（<code>CODEAGENT.md</code> / <code>AGENTS.md</code>）+ 记忆召回（LLM 从 <code>MEMORY.md</code> 索引挑选 ≤5 条相关记忆）+ 会话历史。超长时自动触发 <code>/compact</code> 压缩。</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="rail"><div class="num">3</div><div class="line"></div></div>
+      <div class="step-body">
+        <h3><span class="hl">LLM 流式推理</span></h3>
+        <p>模型边生成边推送 <code>StreamText</code> / <code>ThinkingText</code> 事件，前端实时渲染气泡与思考折叠卡片。</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="rail"><div class="num">4</div><div class="line"></div></div>
+      <div class="step-body">
+        <h3><span class="hl">工具调用 · 权限校验</span></h3>
+        <p>模型请求工具（读写文件 / Bash / 搜索 / 子 Agent…）→ 权限模式矩阵 + 规则引擎 + 危险命令检测 → 未授权操作弹窗询问用户。</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="rail"><div class="num">5</div><div class="line"></div></div>
+      <div class="step-body">
+        <h3><span class="hl">沙箱执行</span></h3>
+        <p>文件操作限制在项目根目录 + 系统临时目录，realpath 防符号链接逃逸，配置目录禁写；macOS seatbelt 提供系统级隔离。</p>
+      </div>
+    </div>
+    <div class="loop-hint">↻ 工具结果回注上下文，回到第 3 步继续推理，直到模型不再请求工具</div>
+    <div class="step">
+      <div class="rail"><div class="num">6</div><div class="line"></div></div>
+      <div class="step-body">
+        <h3><span class="hl">完成 · 沉淀</span></h3>
+        <p>输出最终答复与 Token 用量；后台 MemoryConsolidator 将会话要点固化进记忆库，供后续会话召回。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="memory">
+  <div class="section-tag">Memory</div>
+  <h2>记忆机制 · 四层设计</h2>
+  <p class="section-desc">对齐 Claude Code 的记忆架构：指令注入、文件化记忆、LLM 智能召回、后台固化，跨会话持续学习。</p>
+  <div class="grid">
+    <div class="card">
+      <div class="card-icon">📜</div>
+      <h3>L1 · 指令注入</h3>
+      <p>启动时加载项目级与用户级的 <code>CODEAGENT.md</code> / <code>AGENTS.md</code>，直接并入系统提示词，定义项目规范与偏好。</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🗂️</div>
+      <h3>L2 · 文件化记忆</h3>
+      <p>每条记忆一个 <code>.md</code> 文件 + frontmatter 元数据，<code>MEMORY.md</code> 仅存索引（200 行 / 25KB 上限）。</p>
+      <ul>
+        <li><b>user / feedback</b> → 用户级目录，跨项目跟随</li>
+        <li><b>project / reference</b> → 项目级 <code>.codeagent/memory/</code></li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-icon">🎯</div>
+      <h3>L3 · 智能召回</h3>
+      <p>每次提问时，用一次 LLM side-query 从索引中精选最多 5 条相关记忆注入上下文，避免全量塞入浪费 Token。</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">💾</div>
+      <h3>L4 · 后台固化</h3>
+      <p>MemoryConsolidator 定期将近期会话提炼为记忆条目；文件锁 + 时间戳防多实例并发写入冲突。</p>
+    </div>
+  </div>
+</section>
+
+<section id="security">
+  <div class="section-tag">Security</div>
+  <h2>权限沙箱 · 四级模式</h2>
+  <p class="section-desc">工具按类别（读 / 写 / 命令）匹配不同决策，配合路径沙箱与危险命令检测，让 Agent 安全地在真实项目中工作。</p>
+  <table>
+    <tr><th>权限模式</th><th>读操作</th><th>文件写入</th><th>命令执行</th><th>适用场景</th></tr>
+    <tr><td class="mode">default</td><td><span class="ok">✓ 允许</span></td><td><span class="ask">? 询问</span></td><td><span class="ask">? 询问</span></td><td>日常使用（默认）</td></tr>
+    <tr><td class="mode">acceptEdits</td><td><span class="ok">✓ 允许</span></td><td><span class="ok">✓ 允许</span></td><td><span class="ask">? 询问</span></td><td>信任编辑、谨慎跑命令</td></tr>
+    <tr><td class="mode">plan</td><td><span class="ok">✓ 允许</span></td><td><span class="no">✗ 拒绝</span></td><td><span class="no">✗ 拒绝</span></td><td>只读规划、方案评审</td></tr>
+    <tr><td class="mode">bypassPermissions</td><td><span class="ok">✓ 允许</span></td><td><span class="ok">✓ 允许</span></td><td><span class="ok">✓ 允许</span></td><td>全自动化（慎用）</td></tr>
+  </table>
+</section>
+
+<footer>
+  ⚡ CodeAgent · <a href="https://github.com/g164765280-netizen/codeagent">github.com/g164765280-netizen/codeagent</a> · <a href="/">在线演示 →</a>
+</footer>
+
+</body>
+</html>"""

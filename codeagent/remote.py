@@ -61,7 +61,7 @@ from codeagent.skills.loader import SkillLoader
 from codeagent.tools import ToolRegistry, create_default_registry
 from codeagent.tools.impl.tool_search import ToolSearchTool
 from codeagent.tools.load_skill import LoadSkill
-from codeagent.web_content import INDEX_HTML
+from codeagent.web_content import ARCH_HTML, INDEX_HTML
 
 log = logging.getLogger(__name__)
 
@@ -154,6 +154,13 @@ class RemoteServer:
                 "OK",
                 websockets.Headers({"Content-Type": "text/html; charset=utf-8"}),
                 INDEX_HTML.encode("utf-8"),
+            )
+        if request.path == "/arch":
+            return Response(
+                200,
+                "OK",
+                websockets.Headers({"Content-Type": "text/html; charset=utf-8"}),
+                ARCH_HTML.encode("utf-8"),
             )
         if request.path != "/ws":
             return Response(404, "Not Found", websockets.Headers(), b"404 Not Found")
