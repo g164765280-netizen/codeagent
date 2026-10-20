@@ -15,6 +15,7 @@ from codeagent.memory.auto_memory import (
     is_auto_mem_path,
     parse_frontmatter,
 )
+from codeagent.memory.bank import MemoryBank, UserProfile
 from codeagent.memory.instructions import load_instructions, process_includes
 from codeagent.memory.recall import (
     RelevantMemory,
@@ -36,6 +37,7 @@ from codeagent.memory.session import (
 
 __all__ = [
     "ENTRYPOINT_NAME",
+    "MemoryBank",
     "MemoryFile",
     "MemoryManager",
     "RelevantMemory",
@@ -44,6 +46,7 @@ __all__ = [
     "SessionManager",
     "SessionMeta",
     "SessionRecord",
+    "UserProfile",
     "build_memory_prompt",
     "ensure_memory_dir_exists",
     "find_relevant_memories",

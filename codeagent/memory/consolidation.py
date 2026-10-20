@@ -237,11 +237,19 @@ def _list_sessions_since(work_dir: str, since_ms: int) -> list[str]:
     """返回 since_ms 之后被修改过的会话 ID。"""
     mgr = SessionManager(work_dir)
     since_ts = since_ms / 1000
-    return [
-        s.id
-        for s in mgr.list()
-        if s.last_active > since_ts
-    ]
+    from datetime import datetime, timezone
+
+    result: list[str] = []
+    for s in mgr.list():
+        last = s.last_active
+        if isinstance(last, datetime):
+            if last.tzinfo is None:
+                last = last.replace(tzinfo=timezone.utc)
+            if last.timestamp() > since_ts:
+                result.append(s.id)
+        elif isinstance(last, (int, float)) and last > since_ts:
+            result.append(s.id)
+    return result
 
 
 # ---------------------------------------------------------------------------

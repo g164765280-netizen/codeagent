@@ -346,6 +346,11 @@ class Agent:
         if memory_manager is not None:
             from codeagent.memory.consolidation import MemoryConsolidator
             self._consolidator = MemoryConsolidator(work_dir)
+        # 结构化记忆：项目档案（memory-bank）+ 用户画像（USER.md）
+        from codeagent.memory.bank import MemoryBank, UserProfile
+        self._memory_bank = MemoryBank(work_dir)
+        self._user_profile = UserProfile()
+        self._memory_bank_booted = False
         self.session_id: str = ""
         self.active_skills: dict[str, str] = {}
         self._skill_catalog: str = ""
@@ -447,8 +452,14 @@ class Agent:
         )
         conversation.inject_environment(env_context)
 
-        memory_content = self.memory_manager.load() if self.memory_manager else ""
+        memory_content = self._compose_memory_injection()
         conversation.inject_long_term_memory(self.instructions_content, memory_content)
+
+        # 首次使用时后台初始化项目档案（LLM 生成五文件初稿）
+        if not self._memory_bank_booted:
+            self._memory_bank_booted = True
+            if self.memory_manager is not None and not self._memory_bank.is_initialized():
+                asyncio.ensure_future(self._boot_memory_bank())
 
         if self.hook_engine:
             ctx = self._build_hook_context("session_start")
@@ -550,7 +561,7 @@ class Agent:
                     boundary=compact_result.boundary,
                 )
                 conversation.inject_environment(env_context)
-                mem = self.memory_manager.load() if self.memory_manager else ""
+                mem = self._compose_memory_injection()
                 conversation.inject_long_term_memory(
                     self.instructions_content, mem
                 )
@@ -644,6 +655,12 @@ class Agent:
                 if self._consolidator is not None:
                     asyncio.ensure_future(
                         self._consolidator.maybe_run(self.client, conversation, self.protocol)
+                    )
+                # 结构化记忆：项目档案 + 用户画像增量更新（内部自带节流；
+                # 与散点提取一致，仅在配置了记忆系统时启用）
+                if self.memory_manager is not None:
+                    asyncio.ensure_future(
+                        self._update_structured_memory(conversation)
                     )
                 if self.hook_engine:
                     ctx = self._build_hook_context("turn_end")
@@ -963,6 +980,39 @@ class Agent:
             return
         self.recovery_state.record_file_read(path, content)
 
+    def _compose_memory_injection(self) -> str:
+        """组装注入长期记忆：散点记忆（现有）+ 项目档案 + 用户画像。"""
+        parts: list[str] = []
+        if self.memory_manager:
+            scattered = self.memory_manager.load()
+            if scattered:
+                parts.append(scattered)
+        bank_ctx = self._memory_bank.load_context()
+        if bank_ctx:
+            parts.append(bank_ctx)
+        profile_ctx = self._user_profile.load_context()
+        if profile_ctx:
+            parts.append(profile_ctx)
+        return "\n\n".join(parts)
+
+    async def _boot_memory_bank(self) -> None:
+        """后台初始化项目档案（首次运行，LLM 生成五文件初稿）。"""
+        try:
+            ok = await self._memory_bank.initialize(self.client)
+        except Exception as e:
+            log.debug("[memory-bank] boot failed: %s", e)
+            return
+        if ok:
+            # 档案生成于会话中途：重置注入标志，让下一轮 run 重新注入
+            conv = self._current_conversation
+            if conv is not None:
+                conv.ltm_injected = False
+
+    async def _update_structured_memory(self, conversation: ConversationManager) -> None:
+        """turn 末后台更新：项目档案 + 用户画像（带节流与并发保护）。"""
+        await self._memory_bank.update_from_turn(self.client, conversation, self._loop_count)
+        await self._user_profile.update_from_turn(self.client, conversation)
+
     async def _extract_memories(
         self, conversation: ConversationManager
     ) -> None:
@@ -1021,7 +1071,7 @@ class Agent:
             self.work_dir, self.active_skills, self._skill_catalog, self._agent_catalog
         )
             conversation.inject_environment(env_context)
-            memory_content = self.memory_manager.load() if self.memory_manager else ""
+            memory_content = self._compose_memory_injection()
             conversation.inject_long_term_memory(
                 self.instructions_content, memory_content
             )
@@ -1045,7 +1095,7 @@ class Agent:
             conversation.inject_environment(env_context)
 
             if self.instructions_content:
-                memory_content = self.memory_manager.load() if self.memory_manager else ""
+                memory_content = self._compose_memory_injection()
                 conversation.inject_long_term_memory(
                     self.instructions_content, memory_content
                 )
